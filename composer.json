@@ -11,6 +11,7 @@
 		"php": ">=5.3",
 		"fliglio/fli":     "dev-master",
 		"fliglio/flfc":    "dev-master",
+		"fliglio/chinchilla": "dev-master",
 		"fliglio/routing": "dev-master",
 		"fliglio/http":    "dev-master",
 		"fliglio/web":     "dev-master",

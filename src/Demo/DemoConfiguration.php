@@ -10,15 +10,15 @@ use Fliglio\Borg\Amqp\AmqpChanDriverFactory;
 use Fliglio\Borg\Collective;
 use Fliglio\Borg\Chan\ChanFactory;
 
+use Fliglio\Borg\RoutingConfiguration;
+use Fliglio\Borg\Mapper\DefaultMapper;
+
+
 use Fliglio\Consul\AddressProviderFactory;
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 
-use Demo\Research\Scanner;
-use Demo\Db\RaceDbm;
-use Demo\Resource\LifeFormScanner;
-use Demo\Resource\GroupScanner;
-use Demo\Resource\Assimilation;
+use Demo\Resource\DemoResource;
 
 
 class DemoConfiguration extends DefaultConfiguration {
@@ -33,57 +33,24 @@ class DemoConfiguration extends DefaultConfiguration {
 		$rAdd = $rabbitAp->getAddress();
 		$rConn = new AMQPStreamConnection($rAdd->getHost(), $rAdd->getPort(), "guest", "guest", "/");
 		
-		// MySQL
-		$mysqlAp = $apFactory->createConsulAddressProvider('mysql');
-		$mAdd = $mysqlAp->getAddress();
-		
-		$dsn = sprintf("mysql:host=%s;dbname=borg", $mAdd->getHost());
-		$db = new \PDO($dsn, 'borg', 'changeme', [\PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8']);
-		$db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-
-		// Resource Dependencies
-		$http = null;
-		$scanner = new Scanner($http);
-		$dbm = new RaceDbm($db);
 
 		// Resources
-		$ls = new LifeFormScanner($scanner);
-		$gs = new GroupScanner($scanner);
-		$as = new Assimilation($dbm);
+		$resource = new DemoResource();
 
 		// Borg
 		$driver = new AmqpCollectiveDriver($rConn);
+		$mapper = new DefaultMapper($driver);
+		$routing = new RoutingConfiguration("borg-demo");
+		
+		$coll = new Collective($driver, $mapper, $routing);
 
-		$coll = new Collective($driver, "borg-demo", $_SERVER['CUBE_DC']);
-		$coll->assimilate($ls);
-		$coll->assimilate($gs);
-		$coll->assimilate($dbm);
+		$coll->assimilate($resource);
 		
 
 		return [
-			// Life Form Scanner
 			RouteBuilder::get()
-				->uri('/life-form')
-				->resource($ls, 'scan')
-				->method(Http::METHOD_POST)
-				->build(),
-					
-			// Group Scanner
-			RouteBuilder::get()
-				->uri('/group')
-				->resource($gs, 'scan')
-				->method(Http::METHOD_POST)
-				->build(),
-					
-			// Assimilation
-			RouteBuilder::get()
-				->uri('/race/:race')
-				->resource($as, 'assimilateRace')
-				->method(Http::METHOD_PUT)
-				->build(),
-			RouteBuilder::get()
-				->uri('/race/:race')
-				->resource($as, 'getRaceStatus')
+				->uri('/test')
+				->resource($resource, 'test')
 				->method(Http::METHOD_GET)
 				->build(),
 					
@@ -93,7 +60,17 @@ class DemoConfiguration extends DefaultConfiguration {
 				->resource($coll, "mux")
 				->method(Http::METHOD_POST)
 				->build(),
+
+			//health
+			RouteBuilder::get()
+				->uri('/admin/health')
+				->resource($this, 'health')
+				->method(Http::METHOD_GET)
+				->build(),
 		];
+	}
+	public function health() {
+		return true;
 	}
 }
 

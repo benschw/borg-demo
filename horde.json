@@ -1,0 +1,7 @@
+{
+	"driver" : "k_lemp",
+	"image": "kasasa/fliglio-microsvc",
+	"name"   : "borg",
+	"secrets_file": "./secrets.yml",
+	"services": ["rabbitmq", "chinchilla"]
+}
